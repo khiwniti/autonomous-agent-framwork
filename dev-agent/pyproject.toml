@@ -1,0 +1,132 @@
+[tool.poetry]
+name = "autonomous-dev-agent"
+version = "0.1.0"
+description = "Production-grade AI-powered autonomous software development agent"
+authors = ["Dev Team <dev@example.com>"]
+license = "MIT"
+readme = "README.md"
+packages = [{include = "agent", from = "src"}]
+
+[tool.poetry.dependencies]
+python = ">=3.11,<3.14"
+
+# Core Framework
+pydantic = "^2.5.0"
+pydantic-settings = "^2.1.0"
+
+# LangGraph Orchestration (v1.0+)
+langgraph = "^0.2.0"
+langgraph-checkpoint = "^2.0.0"
+langgraph-checkpoint-postgres = "^2.0.0"
+langchain-core = "^0.3.0"
+langchain-openai = "^0.2.0"
+langchain-anthropic = "^0.2.0"
+
+# MCP Integration
+mcp = "^1.0.0"
+langchain-mcp-adapters = "^0.1.0"
+fastmcp = "*"
+
+# A2A Protocol
+httpx-sse = "^0.4.0"
+
+# LLM Integration
+openai = "^1.6.0"
+anthropic = "^0.39.0"
+httpx = "^0.27.0"
+tiktoken = "^0.7.0"
+jinja2 = "^3.1.0"
+
+# Async & Performance
+aiofiles = "^23.2.0"
+
+# CLI
+click = "^8.1.0"
+rich = "^13.7.0"
+
+# Configuration
+python-dotenv = "^1.0.0"
+
+# Memory & Storage
+qdrant-client = "^1.7.0"
+psycopg = {extras = ["binary", "pool"], version = "^3.2.0"}
+asyncpg = "^0.29.0"
+
+# Optional: ML embeddings (requires torch)
+sentence-transformers = {version = "^2.2.0", optional = true}
+
+# Tool Framework
+gitpython = "^3.1.0"
+watchdog = "^3.0.0"
+
+# API Layer
+fastapi = "^0.115.0"
+uvicorn = {extras = ["standard"], version = "^0.27.0"}
+websockets = "^12.0"
+sse-starlette = "^2.1.0"
+
+# Observability
+prometheus-client = "^0.19.0"
+langfuse = "^2.0.0"
+opentelemetry-api = "^1.22.0"
+opentelemetry-sdk = "^1.22.0"
+opentelemetry-exporter-otlp = "^1.22.0"
+
+# Security
+python-jose = {extras = ["cryptography"], version = "^3.3.0"}
+
+[tool.poetry.extras]
+ml = ["sentence-transformers"]
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.0"
+pytest-asyncio = "^0.21.0"
+pytest-cov = "^4.1.0"
+pytest-mock = "^3.12.0"
+black = "^23.12.0"
+ruff = "^0.1.0"
+mypy = "^1.7.0"
+pre-commit = "^3.6.0"
+
+[tool.poetry.scripts]
+agent = "agent.cli.main:cli"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",  # line too long, handled by black
+    "B008",  # do not perform function calls in argument defaults
+]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+plugins = ["pydantic.mypy"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --cov=src/agent --cov-report=html --cov-report=term-missing"
+asyncio_mode = "auto"

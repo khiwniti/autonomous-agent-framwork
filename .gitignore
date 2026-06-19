@@ -1,0 +1,43 @@
+# Git ignore for the autonomous-agent-framwork monorepo
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Python caching
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.nox/
+.tox/
+
+# Node / JS
+node_modules/
+npm-debug.log
+
+# IDEs
+.vscode/
+.idea/
+.history/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Local configuration
+.google-agents-cli/
+.persist_vector_store/
+.saved_chats/
