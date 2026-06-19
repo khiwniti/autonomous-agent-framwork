@@ -7,7 +7,7 @@ services:
       context: ./dev-agent
       dockerfile: Dockerfile
     container_name: autonomous-agent-api
-    command: bash start.sh
+    entrypoint: ["/bin/bash", "start.sh"]
     ports:
       - "8000:8000"
       - "8001:8001"
@@ -47,9 +47,6 @@ services:
       - redis
       - jaeger
       - langfuse
-      - mcp-filesystem
-      - mcp-git
-      - mcp-shell
     networks:
       - agent-network
     restart: unless-stopped
@@ -119,7 +116,7 @@ services:
 
   # Langfuse - LLM Observability
   langfuse:
-    image: langfuse/langfuse:latest
+    image: langfuse/langfuse:2
     container_name: agent-langfuse
     environment:
       - DATABASE_URL=postgresql://agent_user:agent_pass@postgres:5432/langfuse_db
@@ -134,42 +131,6 @@ services:
     restart: unless-stopped
     depends_on:
       - postgres
-
-  # MCP Filesystem Server
-  mcp-filesystem:
-    image: node:20-alpine
-    container_name: agent-mcp-filesystem
-    working_dir: /app
-    command: npx @anthropic/mcp-server-filesystem /workspace
-    volumes:
-      - ./workspace:/workspace
-    networks:
-      - agent-network
-    restart: unless-stopped
-
-  # MCP Git Server
-  mcp-git:
-    image: node:20-alpine
-    container_name: agent-mcp-git
-    working_dir: /app
-    command: npx @anthropic/mcp-server-git --repository /workspace
-    volumes:
-      - ./workspace:/workspace
-    networks:
-      - agent-network
-    restart: unless-stopped
-
-  # MCP Shell Server (with restricted permissions)
-  mcp-shell:
-    image: node:20-alpine
-    container_name: agent-mcp-shell
-    working_dir: /workspace
-    command: npx @anthropic/mcp-server-shell --allowed-commands "npm,npx,node,git,ls,cat,echo,mkdir,rm,cp,mv"
-    volumes:
-      - ./workspace:/workspace
-    networks:
-      - agent-network
-    restart: unless-stopped
 
 volumes:
   postgres-data:

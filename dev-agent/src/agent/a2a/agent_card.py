@@ -174,7 +174,7 @@ class AgentCard(BaseModel):
     
     def to_wellknown_json(self) -> dict[str, Any]:
         """Format for /.well-known/agent.json endpoint."""
-        return self.model_dump(exclude_none=True, by_alias=True)
+        return self.model_dump(mode="json", exclude_none=True, by_alias=True)
 
 
 # ============================================================================
