@@ -4,7 +4,7 @@ services:
   # Autonomous Agent API
   agent-api:
     build:
-      context: .
+      context: ./dev-agent
       dockerfile: Dockerfile
     container_name: autonomous-agent-api
     command: bash start.sh
@@ -71,7 +71,7 @@ services:
       - PGDATA=/var/lib/postgresql/data/pgdata
     volumes:
       - postgres-data:/var/lib/postgresql/data
-      - ./deployment/docker/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./dev-agent/deployment/docker/init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
       - "5432:5432"
     networks:
