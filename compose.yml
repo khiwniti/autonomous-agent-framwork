@@ -1,0 +1,188 @@
+version: '3.8'
+
+services:
+  # Autonomous Agent API
+  agent-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: autonomous-agent-api
+    command: bash start.sh
+    ports:
+      - "8000:8000"
+      - "8001:8001"
+      - "8002:8002"
+    environment:
+      - AGENT_ENV=development
+      - SECURITY_LEVEL=medium
+      - LOG_LEVEL=info
+      - OTLP_ENDPOINT=jaeger:4317
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=agent_db
+      - POSTGRES_USER=agent_user
+      - POSTGRES_PASSWORD=agent_pass
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      # LangGraph Checkpointing
+      - LANGGRAPH_CHECKPOINT_POSTGRES=postgresql://agent_user:agent_pass@postgres:5432/agent_db
+      # Langfuse Observability
+      - LANGFUSE_PUBLIC_KEY=${LANGFUSE_PUBLIC_KEY:-}
+      - LANGFUSE_SECRET_KEY=${LANGFUSE_SECRET_KEY:-}
+      - LANGFUSE_HOST=http://langfuse:3000
+      # MCP Server URLs
+      - MCP_FILESYSTEM_URL=http://mcp-filesystem:3000
+      - MCP_GIT_URL=http://mcp-git:3000
+      - MCP_SHELL_URL=http://mcp-shell:3000
+      # LLM Configuration
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+    volumes:
+      - ./logs:/app/logs
+      - ./.checkpoints:/app/.checkpoints
+      - ./.secrets:/app/.secrets
+      - ./workspace:/workspace
+    depends_on:
+      - postgres
+      - redis
+      - jaeger
+      - langfuse
+      - mcp-filesystem
+      - mcp-git
+      - mcp-shell
+    networks:
+      - agent-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # PostgreSQL Database with pgvector
+  postgres:
+    image: pgvector/pgvector:pg15
+    container_name: agent-postgres
+    environment:
+      - POSTGRES_DB=agent_db
+      - POSTGRES_USER=agent_user
+      - POSTGRES_PASSWORD=agent_pass
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./deployment/docker/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - agent-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agent_user -d agent_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: agent-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - agent-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
+  # Jaeger Tracing
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: agent-jaeger
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "4317:4317"    # OTLP gRPC
+      - "4318:4318"    # OTLP HTTP
+      - "14268:14268"  # Jaeger collector
+    networks:
+      - agent-network
+    restart: unless-stopped
+
+  # Langfuse - LLM Observability
+  langfuse:
+    image: langfuse/langfuse:latest
+    container_name: agent-langfuse
+    environment:
+      - DATABASE_URL=postgresql://agent_user:agent_pass@postgres:5432/langfuse_db
+      - NEXTAUTH_SECRET=langfuse-secret-change-me
+      - NEXTAUTH_URL=http://localhost:3001
+      - SALT=langfuse-salt-change-me
+      - TELEMETRY_ENABLED=false
+    ports:
+      - "3001:3000"
+    networks:
+      - agent-network
+    restart: unless-stopped
+    depends_on:
+      - postgres
+
+  # MCP Filesystem Server
+  mcp-filesystem:
+    image: node:20-alpine
+    container_name: agent-mcp-filesystem
+    working_dir: /app
+    command: npx @anthropic/mcp-server-filesystem /workspace
+    volumes:
+      - ./workspace:/workspace
+    networks:
+      - agent-network
+    restart: unless-stopped
+
+  # MCP Git Server
+  mcp-git:
+    image: node:20-alpine
+    container_name: agent-mcp-git
+    working_dir: /app
+    command: npx @anthropic/mcp-server-git --repository /workspace
+    volumes:
+      - ./workspace:/workspace
+    networks:
+      - agent-network
+    restart: unless-stopped
+
+  # MCP Shell Server (with restricted permissions)
+  mcp-shell:
+    image: node:20-alpine
+    container_name: agent-mcp-shell
+    working_dir: /workspace
+    command: npx @anthropic/mcp-server-shell --allowed-commands "npm,npx,node,git,ls,cat,echo,mkdir,rm,cp,mv"
+    volumes:
+      - ./workspace:/workspace
+    networks:
+      - agent-network
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+  workspace-data:
+    driver: local
+
+networks:
+  agent-network:
+    driver: bridge
